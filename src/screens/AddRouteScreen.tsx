@@ -13,42 +13,9 @@ import {
   FlatList,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { createIconSet } from 'react-native-vector-icons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'react-native-image-picker';
-
-const Icon = createIconSet({
-  'drag-handle': '\ue25d',
-  'close': '\ue5cd',
-  'arrow-back': '\ue5c4',
-  'save': '\ue161',
-  'add-photo-alternate': '\ue43e',
-  'account-balance': '\ue84f',
-  'park': '\uea13',
-  'restaurant': '\ue56c',
-  'shopping-bag': '\uf1cc',
-  'local-offer': '\ue54e',
-  'chevron-right': '\ue5cc',
-  'delete': '\ue872',
-  'family-restroom': '\uf1a2',
-  'accessible': '\ue914',
-  'money-off': '\ue25c',
-  'local-parking': '\ue54f',
-  'directions-bus': '\ue530',
-  'pets': '\ue91d',
-  'photo-camera': '\ue412',
-  'wifi': '\ue63e',
-}, 'MaterialIcons');
-
-type RoutePoint = {
-  id: string;
-  latitude: number;
-  longitude: number;
-  title: string;
-  description: string;
-  duration: string;
-  order: number;
-};
 
 const ROUTE_TYPES = [
   { id: 'historical', label: 'Tarihi', icon: 'account-balance' },
@@ -67,6 +34,16 @@ const ROUTE_TAGS = [
   { id: 'photo-spot', label: 'Fotoğraf Noktası', icon: 'photo-camera' },
   { id: 'wifi', label: 'Ücretsiz WiFi', icon: 'wifi' },
 ];
+
+type RoutePoint = {
+    id: string;
+    latitude: number;
+    longitude: number;
+    title: string;
+    description: string;
+    duration: string;
+    order: number;
+  };
 
 const AddRouteScreen = () => {
   const navigation = useNavigation();
@@ -161,7 +138,7 @@ const AddRouteScreen = () => {
           onPress={() => setSelectedPoint(item)}
         >
           <View style={styles.pointItemContent}>
-            <MaterialIcon name="drag-handle" size={24} color="#666" />
+            <MaterialIcons name="drag-handle" size={24} color="#666" />
             <Text style={styles.pointItemTitle}>{item.title}</Text>
             <Text style={styles.pointItemDuration}>{item.duration} dk</Text>
           </View>
@@ -183,8 +160,7 @@ const AddRouteScreen = () => {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Rota Etiketleri</Text>
             <TouchableOpacity onPress={() => setShowTagsModal(false)}>
-              {/* @ts-ignore */}
-              <Icon name="close" size={24} color="#000" />
+              <MaterialIcons name="close" size={24} color="#000" />
             </TouchableOpacity>
           </View>
           <ScrollView>
@@ -197,8 +173,7 @@ const AddRouteScreen = () => {
                 ]}
                 onPress={() => handleTagToggle(tag.id)}
               >
-                {/* @ts-ignore */}
-                <Icon
+                <MaterialIcons
                   name={tag.icon}
                   size={24}
                   color={selectedTags.includes(tag.id) ? '#2D63FF' : '#666'}
@@ -223,16 +198,14 @@ const AddRouteScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          {/* @ts-ignore */}
-          <Icon name="arrow-back" size={24} color="#000" />
+          <MaterialIcons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.title}>Yeni Rota Ekle</Text>
         <TouchableOpacity
           style={styles.draftButton}
           onPress={() => handleSave(true)}
         >
-          {/* @ts-ignore */}
-          <Icon name="save" size={24} color="#2D63FF" />
+          <MaterialIcons name="save" size={24} color="#2D63FF" />
         </TouchableOpacity>
       </View>
 
@@ -252,8 +225,7 @@ const AddRouteScreen = () => {
             <Image source={{ uri: coverPhoto }} style={styles.coverPhoto} />
           ) : (
             <View style={styles.coverPhotoPlaceholder}>
-              {/* @ts-ignore */}
-              <Icon name="add-photo-alternate" size={40} color="#666" />
+              <MaterialIcons name="add-photo-alternate" size={40} color="#666" />
               <Text style={styles.coverPhotoText}>Kapak Fotoğrafı Ekle</Text>
             </View>
           )}
@@ -270,8 +242,7 @@ const AddRouteScreen = () => {
               ]}
               onPress={() => setSelectedType(type.id)}
             >
-              {/* @ts-ignore */}
-              <Icon
+              <MaterialIcons
                 name={type.icon}
                 size={24}
                 color={selectedType === type.id ? '#2D63FF' : '#666'}
@@ -293,16 +264,14 @@ const AddRouteScreen = () => {
           onPress={() => setShowTagsModal(true)}
         >
           <View style={styles.tagsButtonContent}>
-            {/* @ts-ignore */}
-            <Icon name="local-offer" size={24} color="#2D63FF" />
+            <MaterialIcons name="local-offer" size={24} color="#2D63FF" />
             <Text style={styles.tagsButtonText}>
               {selectedTags.length > 0
                 ? `${selectedTags.length} Etiket Seçildi`
                 : 'Etiket Ekle'}
             </Text>
           </View>
-          {/* @ts-ignore */}
-          <Icon name="chevron-right" size={24} color="#666" />
+          <MaterialIcons name="chevron-right" size={24} color="#666" />
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Konumlar</Text>
@@ -349,8 +318,7 @@ const AddRouteScreen = () => {
                 onPress={() => removePoint(selectedPoint.id)}
                 style={styles.removeButton}
               >
-                {/* @ts-ignore */}
-                <Icon name="delete" size={24} color="#ff4444" />
+                <MaterialIcons name="delete" size={24} color="#ff4444" />
               </TouchableOpacity>
             </View>
             <TextInput
