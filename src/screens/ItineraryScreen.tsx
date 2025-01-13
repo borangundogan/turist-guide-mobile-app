@@ -16,7 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
   HomeTab: undefined;
-  RouteDetail: { routeId: string };
+  Destination: { routeId: string };
   Add: undefined;
 };
 
@@ -89,7 +89,7 @@ const ItineraryScreen = () => {
   };
 
   const handleRoutePress = (routeId: string) => {
-    navigation.navigate('RouteDetail', { routeId });
+    navigation.navigate('Destination', { routeId });
   };
 
   const handleShare = async (route: typeof MY_ROUTES[0]) => {
