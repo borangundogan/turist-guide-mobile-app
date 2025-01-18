@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   SafeAreaView,
   Modal,
   Share,
   Alert,
+  FlatList,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, MapViewProps } from 'react-native-maps';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { routeApi, type Route } from '../services/api';
 
 type RootStackParamList = {
   HomeTab: undefined;
@@ -25,45 +29,158 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type SortOption = 'name' | 'date' | 'rating' | 'duration';
 type FilterType = 'all' | 'historical' | 'nature' | 'food' | 'shopping';
 
-// Örnek veriler
-const MY_ROUTES = [
-  {
-    id: '1',
-    title: 'İstanbul Tarihi Yarımada',
-    type: 'historical',
-    points: [
-      { title: 'Ayasofya' },
-      { title: 'Topkapı Sarayı' },
-      { title: 'Sultanahmet Camii' },
-    ],
-    duration: '4 saat',
-    rating: 4.8,
-    image: 'https://example.com/istanbul.jpg',
-    distance: '5.2 km',
-    createdAt: '2024-01-15',
-    isFavorite: true,
-    visitCount: 3,
-    lastVisited: '2024-01-10',
-  },
-  {
-    id: '2',
-    title: 'Boğaz Turu',
-    type: 'nature',
-    points: [
-      { title: 'Ortaköy' },
-      { title: 'Bebek' },
-      { title: 'Rumeli Hisarı' },
-    ],
-    duration: '3 saat',
-    rating: 4.5,
-    image: 'https://example.com/bosphorus.jpg',
-    distance: '8.7 km',
-    createdAt: '2024-01-12',
-    isFavorite: false,
-    visitCount: 1,
-    lastVisited: '2024-01-12',
-  },
-];
+// Yardımcı fonksiyonlar
+const getTypeIcon = (type: string): string => {
+  switch (type) {
+    case 'historical':
+      return 'account-balance';
+    case 'nature':
+      return 'park';
+    case 'food':
+      return 'restaurant';
+    case 'shopping':
+      return 'shopping-bag';
+    default:
+      return 'place';
+  }
+};
+
+const ForwardedMapView = forwardRef<MapView, MapViewProps>((props, ref) => (
+  <MapView {...props} ref={ref} />
+));
+
+const RouteCard = ({ route, onPress, onFavorite, onShare, onDelete }: {
+  route: Route;
+  onPress: () => void;
+  onFavorite: () => void;
+  onShare: () => void;
+  onDelete: () => void;
+}) => {
+  const centerCoordinate = route.points.reduce(
+    (acc, point) => ({
+      latitude: acc.latitude + point.latitude / route.points.length,
+      longitude: acc.longitude + point.longitude / route.points.length,
+    }),
+    { latitude: 0, longitude: 0 }
+  );
+
+  const deltas = route.points.reduce(
+    (acc, point) => ({
+      latitudeDelta: Math.max(acc.latitudeDelta, Math.abs(point.latitude - centerCoordinate.latitude) * 2.5),
+      longitudeDelta: Math.max(acc.longitudeDelta, Math.abs(point.longitude - centerCoordinate.longitude) * 2.5),
+    }),
+    { latitudeDelta: 0.02, longitudeDelta: 0.02 }
+  );
+
+  const renderPoint = ({ item, index }: { item: Route['points'][0], index: number }) => (
+    <View style={styles.routePoint}>
+      <View style={styles.pointNumber}>
+        <Text style={styles.pointNumberText}>{index + 1}</Text>
+      </View>
+      <View style={styles.pointDetails}>
+        <Text style={styles.pointTitle}>{item.title}</Text>
+        {item.duration && (
+          <Text style={styles.pointDuration}>{item.duration} dk</Text>
+        )}
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.routeCard}>
+      <View style={styles.routeHeader}>
+        <View style={styles.routeTitleContainer}>
+          <MaterialIcons name={getTypeIcon(route.type)} size={24} color="#2D63FF" />
+          <Text style={styles.routeTitle}>{route.title}</Text>
+        </View>
+        <View style={styles.routeStats}>
+          <View style={styles.routeStat}>
+            <MaterialIcons name="place" size={16} color="#666" />
+            <Text style={styles.routeStatText}>{route.points.length} nokta</Text>
+          </View>
+          {route.duration && (
+            <View style={styles.routeStat}>
+              <MaterialIcons name="schedule" size={16} color="#666" />
+              <Text style={styles.routeStatText}>{route.duration}</Text>
+            </View>
+          )}
+          {route.distance && (
+            <View style={styles.routeStat}>
+              <MaterialIcons name="straighten" size={16} color="#666" />
+              <Text style={styles.routeStatText}>{route.distance}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <TouchableOpacity onPress={onPress}>
+        <View style={styles.mapContainer}>
+          <ForwardedMapView
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            region={{
+              ...centerCoordinate,
+              ...deltas,
+            }}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}
+          >
+            {route.points.map((point, index) => (
+              <Marker
+                key={point.id}
+                coordinate={{
+                  latitude: point.latitude,
+                  longitude: point.longitude,
+                }}
+                title={point.title}
+              >
+                <View style={styles.markerContainer}>
+                  <Text style={styles.markerText}>{index + 1}</Text>
+                </View>
+              </Marker>
+            ))}
+          </ForwardedMapView>
+        </View>
+      </TouchableOpacity>
+
+      <FlatList
+        data={route.points}
+        renderItem={renderPoint}
+        keyExtractor={item => item.id}
+        scrollEnabled={false}
+        style={styles.routePoints}
+      />
+
+      <View style={styles.routeActions}>
+        <TouchableOpacity style={styles.actionButton} onPress={onFavorite}>
+          <MaterialIcons
+            name={route.isFavorite ? 'favorite' : 'favorite-border'}
+            size={24}
+            color={route.isFavorite ? '#ff4444' : '#666'}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
+          <MaterialIcons name="share" size={24} color="#666" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={onDelete}>
+          <MaterialIcons name="delete" size={24} color="#666" />
+        </TouchableOpacity>
+      </View>
+
+      {route.tags.length > 0 && (
+        <View style={styles.tagContainer}>
+          {route.tags.map(tag => (
+            <View key={tag} style={styles.tag}>
+              <Text style={styles.tagText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
 
 const ItineraryScreen = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -71,31 +188,38 @@ const ItineraryScreen = () => {
   const [showSortModal, setShowSortModal] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortOption>('date');
-  const [routes, setRoutes] = useState(MY_ROUTES);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'historical':
-        return 'account-balance';
-      case 'nature':
-        return 'park';
-      case 'food':
-        return 'restaurant';
-      case 'shopping':
-        return 'shopping-bag';
-      default:
-        return 'place';
+  useFocusEffect(
+    React.useCallback(() => {
+      loadRoutes();
+    }, [])
+  );
+
+  const loadRoutes = async () => {
+    try {
+      setIsLoading(true);
+      const fetchedRoutes = await routeApi.getRoutes();
+      setRoutes(fetchedRoutes);
+    } catch (error) {
+      console.error('Error loading routes:', error);
+      Alert.alert('Hata', 'Rotalar yüklenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRoutePress = (routeId: string) => {
+  const handleRoutePress = (routeId: string | undefined) => {
+    if (!routeId) return;
     navigation.navigate('Destination', { routeId });
   };
 
-  const handleShare = async (route: typeof MY_ROUTES[0]) => {
+  const handleShare = async (route: Route) => {
     try {
+      const pointsList = route.points.map(p => `- ${p.title}`).join('\n');
       const result = await Share.share({
-        message: `${route.title}\n\nRotadaki Yerler:\n${route.points.map(p => `- ${p.title}`).join('\n')}\n\nToplam Mesafe: ${route.distance}\nSüre: ${route.duration}`,
+        message: `${route.title}\n\nRotadaki Yerler:\n${pointsList}\n\nToplam Mesafe: ${route.distance || 'Belirtilmemiş'}\nSüre: ${route.duration || 'Belirtilmemiş'}`,
         title: route.title,
       });
     } catch (error) {
@@ -103,13 +227,25 @@ const ItineraryScreen = () => {
     }
   };
 
-  const handleFavorite = (routeId: string) => {
-    setRoutes(routes.map(route => 
-      route.id === routeId ? { ...route, isFavorite: !route.isFavorite } : route
-    ));
+  const handleFavorite = async (routeId: string | undefined) => {
+    if (!routeId) return;
+    try {
+      const route = routes.find(r => r.id === routeId);
+      if (route) {
+        await routeApi.updateRoute(routeId, { isFavorite: !route.isFavorite });
+        setRoutes(routes.map(r => 
+          r.id === routeId ? { ...r, isFavorite: !r.isFavorite } : r
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating favorite:', error);
+      Alert.alert('Hata', 'Favori durumu güncellenirken bir hata oluştu');
+    }
   };
 
-  const handleDelete = (routeId: string) => {
+  const handleDelete = async (routeId: string | undefined) => {
+    if (!routeId) return;
+    
     Alert.alert(
       'Rotayı Sil',
       'Bu rotayı silmek istediğinizden emin misiniz?',
@@ -118,8 +254,14 @@ const ItineraryScreen = () => {
         {
           text: 'Sil',
           style: 'destructive',
-          onPress: () => {
-            setRoutes(routes.filter(route => route.id !== routeId));
+          onPress: async () => {
+            try {
+              await routeApi.deleteRoute(routeId);
+              setRoutes(routes.filter(route => route.id !== routeId));
+            } catch (error) {
+              console.error('Error deleting route:', error);
+              Alert.alert('Hata', 'Rota silinirken bir hata oluştu');
+            }
           },
         },
       ]
@@ -127,7 +269,7 @@ const ItineraryScreen = () => {
   };
 
   const filterRoutes = () => {
-    let filtered = [...MY_ROUTES];
+    let filtered = [...routes];
     if (selectedFilter !== 'all') {
       filtered = filtered.filter(route => route.type === selectedFilter);
     }
@@ -137,13 +279,21 @@ const ItineraryScreen = () => {
         filtered.sort((a, b) => a.title.localeCompare(b.title));
         break;
       case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       case 'duration':
-        filtered.sort((a, b) => parseInt(a.duration) - parseInt(b.duration));
+        filtered.sort((a, b) => {
+          const durationA = parseInt((a.duration || '0').replace(/[^0-9]/g, ''));
+          const durationB = parseInt((b.duration || '0').replace(/[^0-9]/g, ''));
+          return durationA - durationB;
+        });
         break;
       case 'date':
-        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        filtered.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
         break;
     }
 
@@ -162,39 +312,40 @@ const ItineraryScreen = () => {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Filtrele</Text>
             <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-              {/* @ts-ignore */}
               <MaterialIcons name="close" size={24} color="#000" />
             </TouchableOpacity>
           </View>
           
-          {['all', 'historical', 'nature', 'food', 'shopping'].map((type) => (
+          {[
+            { id: 'all', label: 'Tümü', icon: 'list' },
+            { id: 'historical', label: 'Tarihi', icon: getTypeIcon('historical') },
+            { id: 'nature', label: 'Doğa', icon: getTypeIcon('nature') },
+            { id: 'food', label: 'Yemek', icon: getTypeIcon('food') },
+            { id: 'shopping', label: 'Alışveriş', icon: getTypeIcon('shopping') },
+          ].map((type) => (
             <TouchableOpacity
-              key={type}
+              key={type.id}
               style={[
                 styles.filterOption,
-                selectedFilter === type && styles.selectedFilter,
+                selectedFilter === type.id && styles.selectedFilter,
               ]}
               onPress={() => {
-                setSelectedFilter(type as FilterType);
+                setSelectedFilter(type.id as FilterType);
                 setShowFilterModal(false);
               }}
             >
-              {/* @ts-ignore */}
               <MaterialIcons
-                name={getTypeIcon(type)}
+                name={type.icon}
                 size={24}
-                color={selectedFilter === type ? '#2D63FF' : '#666'}
+                color={selectedFilter === type.id ? '#2D63FF' : '#666'}
               />
               <Text
                 style={[
                   styles.filterOptionText,
-                  selectedFilter === type && styles.selectedFilterText,
+                  selectedFilter === type.id && styles.selectedFilterText,
                 ]}
               >
-                {type === 'all' ? 'Tümü' :
-                 type === 'historical' ? 'Tarihi' :
-                 type === 'nature' ? 'Doğa' :
-                 type === 'food' ? 'Yemek' : 'Alışveriş'}
+                {type.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -215,7 +366,6 @@ const ItineraryScreen = () => {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Sırala</Text>
             <TouchableOpacity onPress={() => setShowSortModal(false)}>
-              {/* @ts-ignore */}
               <MaterialIcons name="close" size={24} color="#000" />
             </TouchableOpacity>
           </View>
@@ -237,7 +387,6 @@ const ItineraryScreen = () => {
                 setShowSortModal(false);
               }}
             >
-              {/* @ts-ignore */}
               <MaterialIcons
                 name={option.icon}
                 size={24}
@@ -258,6 +407,27 @@ const ItineraryScreen = () => {
     </Modal>
   );
 
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <MaterialIcons name="route" size={48} color="#ddd" />
+      <Text style={styles.emptyStateText}>Henüz rota eklemediniz</Text>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => navigation.navigate('Add')}
+      >
+        <Text style={styles.addButtonText}>Yeni Rota Ekle</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2D63FF" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -267,124 +437,32 @@ const ItineraryScreen = () => {
             style={styles.headerButton}
             onPress={() => setShowSortModal(true)}
           >
-            {/* @ts-ignore */}
             <MaterialIcons name="sort" size={24} color="#2D63FF" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => setShowFilterModal(true)}
           >
-            {/* @ts-ignore */}
             <MaterialIcons name="filter-list" size={24} color="#2D63FF" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView style={styles.content}>
-        {filterRoutes().map(route => (
-          <TouchableOpacity
-            key={route.id}
-            style={styles.routeCard}
+      <FlatList<Route>
+        data={filterRoutes()}
+        renderItem={({ item: route }) => (
+          <RouteCard
+            route={route}
             onPress={() => handleRoutePress(route.id)}
-          >
-            <View style={styles.routeImageContainer}>
-              <View style={styles.routeTypeIcon}>
-                {/* @ts-ignore */}
-                <MaterialIcons
-                  name={getTypeIcon(route.type)}
-                  size={20}
-                  color="#fff"
-                />
-              </View>
-              {/* Placeholder image */}
-              <View style={styles.imagePlaceholder}>
-                {/* @ts-ignore */}
-                <MaterialIcons name="image" size={40} color="#ddd" />
-              </View>
-            </View>
-            <View style={styles.routeInfo}>
-              <Text style={styles.routeTitle}>{route.title}</Text>
-              <View style={styles.routePoints}>
-                {route.points.map((point, index) => (
-                  <Text key={index} style={styles.routePoint}>
-                    {index > 0 ? ' → ' : ''}{point.title}
-                  </Text>
-                ))}
-              </View>
-              <View style={styles.routeStats}>
-                <View style={styles.routeStat}>
-                  {/* @ts-ignore */}
-                  <MaterialIcons name="schedule" size={16} color="#666" />
-                  <Text style={styles.routeStatText}>{route.duration}</Text>
-                </View>
-                <View style={styles.routeStat}>
-                  {/* @ts-ignore */}
-                  <MaterialIcons name="straighten" size={16} color="#666" />
-                  <Text style={styles.routeStatText}>{route.distance}</Text>
-                </View>
-                <View style={styles.routeStat}>
-                  {/* @ts-ignore */}
-                  <MaterialIcons name="star" size={16} color="#FFD700" />
-                  <Text style={styles.routeStatText}>{route.rating}</Text>
-                </View>
-              </View>
-              <View style={styles.routeStats}>
-                <View style={styles.routeStat}>
-                  {/* @ts-ignore */}
-                  <MaterialIcons name="history" size={16} color="#666" />
-                  <Text style={styles.routeStatText}>{route.visitCount} ziyaret</Text>
-                </View>
-                <View style={styles.routeStat}>
-                  {/* @ts-ignore */}
-                  <MaterialIcons name="event" size={16} color="#666" />
-                  <Text style={styles.routeStatText}>Son: {new Date(route.lastVisited).toLocaleDateString()}</Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.routeActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => handleFavorite(route.id)}
-              >
-                {/* @ts-ignore */}
-                <MaterialIcons
-                  name={route.isFavorite ? 'favorite' : 'favorite-border'}
-                  size={24}
-                  color={route.isFavorite ? '#ff4444' : '#666'}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => handleShare(route)}
-              >
-                {/* @ts-ignore */}
-                <MaterialIcons name="share" size={24} color="#666" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => handleDelete(route.id)}
-              >
-                {/* @ts-ignore */}
-                <MaterialIcons name="delete" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        {routes.length === 0 && (
-          <View style={styles.emptyState}>
-            {/* @ts-ignore */}
-            <MaterialIcons name="route" size={48} color="#ddd" />
-            <Text style={styles.emptyStateText}>Henüz rota eklemediniz</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => navigation.navigate('Add')}
-            >
-              <Text style={styles.addButtonText}>Yeni Rota Ekle</Text>
-            </TouchableOpacity>
-          </View>
+            onFavorite={() => handleFavorite(route.id)}
+            onShare={() => handleShare(route)}
+            onDelete={() => handleDelete(route.id)}
+          />
         )}
-      </ScrollView>
+        keyExtractor={item => item.id || Date.now().toString()}
+        contentContainerStyle={styles.content}
+        ListEmptyComponent={renderEmptyState}
+      />
 
       {renderFilterModal()}
       {renderSortModal()}
@@ -395,6 +473,12 @@ const ItineraryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#fff',
   },
   header: {
@@ -417,66 +501,37 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   content: {
-    flex: 1,
     padding: 16,
   },
   routeCard: {
-    flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 12,
-    marginBottom: 16,
-    padding: 12,
-    elevation: 2,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  routeImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 12,
-    position: 'relative',
+  routeHeader: {
+    marginBottom: 12,
   },
-  routeTypeIcon: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    backgroundColor: '#2D63FF',
-    borderRadius: 12,
-    padding: 4,
-    zIndex: 1,
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  routeInfo: {
-    flex: 1,
-  },
-  routeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  routePoints: {
+  routeTitleContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  routePoint: {
-    fontSize: 12,
-    color: '#666',
+  routeTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 8,
+    color: '#333',
   },
   routeStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
   },
   routeStat: {
     flexDirection: 'row',
@@ -484,17 +539,93 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   routeStatText: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: '#666',
+  },
+  mapContainer: {
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  markerContainer: {
+    backgroundColor: '#2D63FF',
+    borderRadius: 12,
+    padding: 4,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  markerText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  routePoints: {
+    marginTop: 12,
+  },
+  routePoint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  pointNumber: {
+    backgroundColor: '#2D63FF',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  pointNumberText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  pointDetails: {
+    flex: 1,
+  },
+  pointTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  pointDuration: {
     fontSize: 12,
     color: '#666',
-    marginLeft: 4,
+    marginTop: 2,
   },
   routeActions: {
-    justifyContent: 'space-between',
-    paddingLeft: 8,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 12,
   },
   actionButton: {
-    padding: 4,
-    marginBottom: 8,
+    marginLeft: 16,
+  },
+  tagContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  tag: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  tagText: {
+    fontSize: 12,
+    color: '#666',
   },
   modalOverlay: {
     flex: 1,

@@ -25,9 +25,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We need your location to show you nearby routes and provide navigation.</string>
+	<string>Rotanızı oluşturmak için konumunuza ihtiyacımız var</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>We need your location to show you nearby routes and provide navigation even when the app is in background.</string>
+	<string>Rotanızı oluşturmak için konumunuza ihtiyacımız var</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Rotanızı oluşturmak için konumunuza ihtiyacımız var</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>MaterialIcons.ttf</string>

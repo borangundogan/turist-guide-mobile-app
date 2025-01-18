@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,16 @@ import {
   Image,
   Modal,
   FlatList,
+  Platform,
+  PermissionsAndroid,
+  Keyboard,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'react-native-image-picker';
+import { routeApi } from '../services/api';
+import Geolocation from '@react-native-community/geolocation';
+import { GOOGLE_MAPS_API_KEY } from '@env';
 
 const ROUTE_TYPES = [
   { id: 'historical', label: 'Tarihi', icon: 'account-balance' },
@@ -45,16 +50,109 @@ type RoutePoint = {
     order: number;
   };
 
+type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+// Add geocoding function
+const geocodeAddress = async (address: string) => {
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+        address
+      )}&key=${GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await response.json();
+    if (data.status === 'OK' && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      return {
+        latitude: location.lat,
+        longitude: location.lng,
+        address: data.results[0].formatted_address,
+      };
+    }
+    throw new Error('Location not found');
+  } catch (error) {
+    throw new Error('Geocoding failed');
+  }
+};
+
 const AddRouteScreen = () => {
-  const navigation = useNavigation();
   const [routeName, setRouteName] = useState('');
   const [selectedType, setSelectedType] = useState(ROUTE_TYPES[0].id);
   const [points, setPoints] = useState<RoutePoint[]>([]);
   const [selectedPoint, setSelectedPoint] = useState<RoutePoint | null>(null);
-  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showTagsModal, setShowTagsModal] = useState(false);
   const [isDraft, setIsDraft] = useState(false);
+  const mapRef = useRef<MapView>(null);
+  const [region, setRegion] = useState({
+    latitude: 41.0082,
+    longitude: 28.9784,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
+
+  useEffect(() => {
+    const requestLocationPermission = async () => {
+      try {
+        if (Platform.OS === 'ios') {
+          Geolocation.requestAuthorization();
+          getCurrentLocation();
+        } else {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Konum İzni',
+              message: 'Rotanızı oluşturmak için konum izni gerekiyor',
+              buttonNeutral: 'Daha Sonra Sor',
+              buttonNegative: 'İptal',
+              buttonPositive: 'Tamam',
+            },
+          );
+          if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+            getCurrentLocation();
+          }
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    };
+
+    requestLocationPermission();
+  }, []);
+
+  const getCurrentLocation = () => {
+    Geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const newRegion = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        };
+        setRegion(newRegion);
+        mapRef.current?.animateToRegion(newRegion, 1000);
+      },
+      (error) => {
+        console.log('Geolocation error:', error);
+        Alert.alert('Hata', 'Konumunuz alınamadı: ' + error.message);
+      },
+      { 
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 1000
+      }
+    );
+  };
+
+  const onRegionChange = (newRegion: Region) => {
+    setRegion(newRegion);
+  };
 
   const handleMapPress = (e: any) => {
     const { latitude, longitude } = e.nativeEvent.coordinate;
@@ -82,17 +180,6 @@ const AddRouteScreen = () => {
     setSelectedPoint(null);
   };
 
-  const handleCoverPhotoSelect = () => {
-    ImagePicker.launchImageLibrary({
-      mediaType: 'photo',
-      quality: 0.8,
-    }, (response) => {
-      if (response.assets && response.assets[0]?.uri) {
-        setCoverPhoto(response.assets[0].uri);
-      }
-    });
-  };
-
   const handleTagToggle = (tagId: string) => {
     setSelectedTags(prev => 
       prev.includes(tagId)
@@ -101,7 +188,7 @@ const AddRouteScreen = () => {
     );
   };
 
-  const handleSave = (asDraft: boolean = false) => {
+  const handleSave = async (asDraft: boolean = false) => {
     if (!routeName.trim() && !asDraft) {
       Alert.alert('Hata', 'Lütfen rota ismi girin');
       return;
@@ -111,42 +198,32 @@ const AddRouteScreen = () => {
       return;
     }
 
-    // TODO: Save route data
-    const routeData = {
-      name: routeName,
-      type: selectedType,
-      points: points.sort((a, b) => a.order - b.order),
-      coverPhoto,
-      tags: selectedTags,
-      isDraft: asDraft,
-    };
-    
-    console.log('Saving route:', routeData);
-    Alert.alert('Başarılı', asDraft ? 'Rota taslak olarak kaydedildi' : 'Rota kaydedildi');
-    navigation.goBack();
-  };
+    try {
+      const routeData = {
+        title: routeName,
+        type: selectedType,
+        points: points.sort((a, b) => a.order - b.order),
+        tags: selectedTags,
+        isDraft: asDraft,
+      };
+      
+      await routeApi.createRoute(routeData);
+      Alert.alert('Başarılı', asDraft ? 'Rota taslak olarak kaydedildi' : 'Rota kaydedildi');
 
-  const renderPointsList = () => (
-    <FlatList
-      data={points}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={[
-            styles.pointItem,
-            selectedPoint?.id === item.id && styles.selectedPointItem,
-          ]}
-          onPress={() => setSelectedPoint(item)}
-        >
-          <View style={styles.pointItemContent}>
-            <MaterialIcons name="drag-handle" size={24} color="#666" />
-            <Text style={styles.pointItemTitle}>{item.title}</Text>
-            <Text style={styles.pointItemDuration}>{item.duration} dk</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-      keyExtractor={item => item.id}
-    />
-  );
+      // Reset all states to default values
+      setRouteName('');
+      setSelectedType(ROUTE_TYPES[0].id);
+      setPoints([]);
+      setSelectedPoint(null);
+      setSelectedTags([]);
+      setShowTagsModal(false);
+      setIsDraft(false);
+
+    } catch (error) {
+      console.error('Error saving route:', error);
+      Alert.alert('Hata', 'Rota kaydedilirken bir hata oluştu');
+    }
+  };
 
   const renderTagsModal = () => (
     <Modal
@@ -197,9 +274,7 @@ const AddRouteScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
+        
         <Text style={styles.title}>Yeni Rota Ekle</Text>
         <TouchableOpacity
           style={styles.draftButton}
@@ -216,20 +291,6 @@ const AddRouteScreen = () => {
           value={routeName}
           onChangeText={setRouteName}
         />
-
-        <TouchableOpacity
-          style={styles.coverPhotoContainer}
-          onPress={handleCoverPhotoSelect}
-        >
-          {coverPhoto ? (
-            <Image source={{ uri: coverPhoto }} style={styles.coverPhoto} />
-          ) : (
-            <View style={styles.coverPhotoPlaceholder}>
-              <MaterialIcons name="add-photo-alternate" size={40} color="#666" />
-              <Text style={styles.coverPhotoText}>Kapak Fotoğrafı Ekle</Text>
-            </View>
-          )}
-        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Rota Türü</Text>
         <View style={styles.typeOptions}>
@@ -278,14 +339,13 @@ const AddRouteScreen = () => {
         <Text style={styles.hint}>Haritaya tıklayarak nokta ekleyin</Text>
         <View style={styles.mapContainer}>
           <MapView
+            ref={mapRef}
             style={styles.map}
-            initialRegion={{
-              latitude: 41.0082,
-              longitude: 28.9784,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
+            provider={PROVIDER_GOOGLE}
+            region={region}
+            onRegionChange={onRegionChange}
             onPress={handleMapPress}
+            showsUserLocation={true}
           >
             {points.map((point) => (
               <Marker
@@ -303,11 +363,26 @@ const AddRouteScreen = () => {
         </View>
 
         {points.length > 0 && (
-          <>
+          <View style={styles.pointsSection}>
             <Text style={styles.sectionTitle}>Nokta Sıralaması</Text>
             <Text style={styles.hint}>Sıralamayı değiştirmek için basılı tutup sürükleyin</Text>
-            {renderPointsList()}
-          </>
+            {points.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.pointItem,
+                  selectedPoint?.id === item.id && styles.selectedPointItem,
+                ]}
+                onPress={() => setSelectedPoint(item)}
+              >
+                <View style={styles.pointItemContent}>
+                  <MaterialIcons name="drag-handle" size={24} color="#666" />
+                  <Text style={styles.pointItemTitle}>{item.title}</Text>
+                  <Text style={styles.pointItemDuration}>{item.duration} dk</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
 
         {selectedPoint && (
@@ -392,34 +467,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  pointsSection: {
+    backgroundColor: '#fff',
+    marginTop: 16,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
-    fontSize: 16,
-  },
-  coverPhotoContainer: {
-    height: 200,
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  coverPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  coverPhotoPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  coverPhotoText: {
-    marginTop: 8,
-    color: '#666',
     fontSize: 16,
   },
   sectionTitle: {
