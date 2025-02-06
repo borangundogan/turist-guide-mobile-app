@@ -5,10 +5,9 @@ A cross-platform mobile application that helps tourists plan and navigate their 
 ## 📱 Screenshots
 
 <div align="center">
-  <img src="screenshots/Screenshot 2025-01-18 at 18.51.45.png" alt="App Screenshot 1" width="250" />
-  <img src="screenshots/Screenshot 2025-01-18 at 18.51.56.png" alt="App Screenshot 2" width="250" />
-  <img src="screenshots/Screenshot 2025-01-18 at 18.52.05.png" alt="App Screenshot 3" width="250" />
-  <img src="screenshots/Screenshot 2025-01-18 at 18.52.41.png" alt="App Screenshot 4" width="250" />
+  <img src="screenshots/1.png" alt="App Screenshot 1" width="250" />
+  <img src="screenshots/2.png" alt="App Screenshot 2" width="250" />
+  <img src="screenshots/3.png" alt="App Screenshot 3" width="250" />
 </div>
 
 ## 🌟 Features
