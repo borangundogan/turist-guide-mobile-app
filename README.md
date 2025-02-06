@@ -1,79 +1,223 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Travel Route Planner
 
-# Getting Started
+A cross-platform mobile application that helps tourists plan and navigate their travel routes using public transportation in unfamiliar cities.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+## 📱 Screenshots
 
-## Step 1: Start the Metro Server
+<div align="center">
+  <img src="screenshots/Screenshot 2025-01-18 at 18.51.45.png" alt="App Screenshot 1" width="250" />
+  <img src="screenshots/Screenshot 2025-01-18 at 18.51.56.png" alt="App Screenshot 2" width="250" />
+  <img src="screenshots/Screenshot 2025-01-18 at 18.52.05.png" alt="App Screenshot 3" width="250" />
+  <img src="screenshots/Screenshot 2025-01-18 at 18.52.41.png" alt="App Screenshot 4" width="250" />
+</div>
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+## 🌟 Features
 
-To start Metro, run the following command from the _root_ of your React Native project:
+### Core Features
+- **Authentication**
+  - Email/Password and Social login
+  - Profile management
+  - Secure authentication flow
 
+- **Location Management**
+  - Save and organize locations
+  - Interactive map integration
+  - Custom categories and tags
+  - Location sharing
+
+- **Route Planning**
+  - Public transportation routing
+  - Real-time transit updates
+  - Turn-by-turn navigation
+  - Alternative route suggestions
+
+- **Trip Organization**
+  - Create and manage multiple trips
+  - Collaborative trip planning
+  - Schedule optimization
+  - Trip sharing and templates
+
+### Premium Features
+- Offline access
+- Advanced route optimization
+- Trip statistics and insights
+- Ad-free experience
+- Priority customer support
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v16 or higher)
+- React Native development environment
+- MongoDB
+- Firebase account
+- Google Maps API key
+- Stripe account (for premium features)
+
+### Installation
+
+1. Clone the repository
 ```bash
-# using npm
-npm start
-
-# OR using Yarn
-yarn start
+git clone https://github.com/yourusername/travel-route-planner.git
+cd travel-route-planner
 ```
 
-## Step 2: Start your Application
-
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
-
+2. Install dependencies
 ```bash
-# using npm
-npm run android
+# Frontend
+cd travel-planner-mobile
+npm install
 
-# OR using Yarn
-yarn android
+# Backend
+cd ../travel-planner-backend
+npm install
 ```
 
-### For iOS
+3. Environment Setup
+Create `.env` files in both frontend and backend directories:
 
 ```bash
-# using npm
-npm run ios
+# Frontend (.env)
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+FIREBASE_CONFIG=your_firebase_config
+API_URL=your_backend_url
 
-# OR using Yarn
-yarn ios
+# Backend (.env)
+MONGODB_URI=your_mongodb_uri
+JWT_SECRET=your_jwt_secret
+FIREBASE_ADMIN_CONFIG=your_firebase_admin_config
+STRIPE_SECRET_KEY=your_stripe_secret_key
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+4. Run the application
+```bash
+# Frontend
+npm run android  # For Android
+npm run ios      # For iOS
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+# Backend
+npm run dev
+```
 
-## Step 3: Modifying your App
+## 📱 Application Structure
 
-Now that you have successfully run the app, let's modify it.
+### Frontend (React Native)
+```plaintext
+travel-planner-mobile/
+├── src/
+│   ├── components/    # Reusable UI components
+│   ├── screens/       # Application screens
+│   ├── navigation/    # Navigation configuration
+│   ├── store/         # Redux store and slices
+│   ├── services/      # API and external services
+│   ├── hooks/         # Custom React hooks
+│   ├── utils/         # Helper functions
+│   ├── theme/         # Styling and themes
+│   └── constants/     # App constants
+```
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+### Backend (Node.js + Express)
+```plaintext
+travel-planner-backend/
+├── src/
+│   ├── controllers/   # Request handlers
+│   ├── models/        # Database models
+│   ├── routes/        # API routes
+│   ├── services/      # Business logic
+│   ├── middleware/    # Custom middleware
+│   └── utils/         # Helper functions
+```
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+## 🛠 Development
 
-## Congratulations! :tada:
+### Technology Stack
+- **Frontend**
+  - React Native
+  - TypeScript
+  - Redux Toolkit
+  - React Navigation
+  - Google Maps SDK
 
-You've successfully run and modified your React Native App. :partying_face:
+- **Backend**
+  - Node.js
+  - Express.js
+  - MongoDB
+  - Firebase Admin
+  - Stripe
 
-### Now what?
+### Code Style
+- Follow the established ESLint and Prettier configurations
+- Use TypeScript for type safety
+- Follow component-based architecture
+- Implement proper error handling
+- Write comprehensive tests
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+### Testing
+```bash
+# Run frontend tests
+cd travel-planner-mobile
+npm test
 
-# Troubleshooting
+# Run backend tests
+cd travel-planner-backend
+npm test
+```
 
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+## 🔒 Security
 
-# Learn More
+- Implement proper authentication and authorization
+- Secure API endpoints
+- Handle sensitive data securely
+- Regular security audits
+- Input validation and sanitization
 
-To learn more about React Native, take a look at the following resources:
+## 📦 Deployment
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+### Mobile App
+1. Configure app signing
+2. Update version numbers
+3. Build release versions
+4. Submit to app stores
+
+### Backend
+1. Set up production environment
+2. Configure SSL/TLS
+3. Set up monitoring
+4. Deploy to cloud provider
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Support
+
+For support, email support@travelrouteplanner.com or join our Slack channel.
+
+## 🔄 Version History
+
+- v1.0.0 (Planned)
+  - Initial release with core features
+  - Basic authentication and location management
+  - Route planning and trip organization
+
+- Future Releases
+  - Offline support
+  - Advanced analytics
+  - Social features
+  - Multi-language support
+
+## 🙏 Acknowledgments
+
+- Google Maps Platform
+- Firebase
+- OpenStreetMap
+- Public Transportation APIs
+- Open source community 
