@@ -7,7 +7,12 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-  [GMSServices provideAPIKey:@"AIzaSyCsoc1EZ097rHpbEEVOfo545fdbOaR_2NY"];
+  NSString *googleMapsApiKey = [[NSProcessInfo processInfo] environmentVariables][@"GOOGLE_MAPS_API_KEY"];
+  if (googleMapsApiKey) {
+    [GMSServices provideAPIKey:googleMapsApiKey];
+  } else {
+    NSLog(@"Warning: GOOGLE_MAPS_API_KEY environment variable is not set");
+  }
   
   self.moduleName = @"TravelRouteApp";
   // You can add your custom initial props in the dictionary below.
